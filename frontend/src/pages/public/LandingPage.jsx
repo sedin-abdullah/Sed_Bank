@@ -24,7 +24,7 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <div data-testid={TESTIDS.landing.root} className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-white/[0.06] backdrop-blur-heavy">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-gradient text-sm font-bold text-white">
