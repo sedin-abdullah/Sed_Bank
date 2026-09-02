@@ -1,0 +1,346 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Glass primitives for the "Wine Reserve" system. Colour, radius, shadow and
+ * motion all come from tailwind.config.js (the design-token file) via @apply
+ * — the raw rgba() literals here are only the translucency itself, which has
+ * no Tailwind token equivalent.
+ */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+
+    /* Glass recipe — warm-tinted so it sits on the wine base, not a grey one. */
+    --glass-bg: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(190, 24, 93, 0.035) 100%
+    );
+    --glass-bg-strong: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(190, 24, 93, 0.05) 100%
+    );
+    /* Dense tables sit on flatter, less blurred glass so small text stays crisp. */
+    --glass-bg-dense: rgba(255, 255, 255, 0.04);
+
+    /* Warm hairlines rather than heavy borders. */
+    --hairline: rgba(255, 255, 255, 0.08);
+    --hairline-strong: rgba(255, 255, 255, 0.14);
+    --hairline-hover: rgba(255, 255, 255, 0.18);
+    --hairline-gold: rgba(212, 175, 55, 0.55);
+
+    --glass-blur: 16px;
+    --glass-blur-dense: 8px;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    background-color: theme('colors.canvas.DEFAULT');
+  }
+
+  body {
+    @apply bg-canvas text-slate-900 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    /* The base is never flat: two fixed wine/gold washes sit under every
+       screen. The drifting blobs live in the app shell / auth layout. */
+    background-image:
+      radial-gradient(58rem 40rem at 10% -10%, rgba(159, 18, 57, 0.28), transparent 62%),
+      radial-gradient(46rem 34rem at 94% 4%, rgba(212, 175, 55, 0.10), transparent 64%),
+      radial-gradient(40rem 34rem at 60% 108%, rgba(190, 24, 93, 0.16), transparent 66%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Display serif for headings and hero numbers. */
+  h1,
+  h2 {
+    @apply font-display;
+    letter-spacing: -0.01em;
+  }
+
+  /* Visible focus for keyboard users, offset against the dark base. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-400 ring-offset-2;
+    --tw-ring-offset-color: theme('colors.canvas.DEFAULT');
+  }
+
+  /* Number inputs: hide spinners so money fields read cleanly. */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  /* Native dropdown lists render in the OS palette; keep them dark. */
+  select option {
+    background-color: theme('colors.canvas.raised');
+    color: theme('colors.slate.900');
+  }
+
+  /**
+   * Respect the OS "reduce motion" setting. The ambient drift, pulses and
+   * flowing dashes are decorative, so they stop entirely; entrances collapse
+   * to a plain fade so nothing appears broken. A lending platform should not
+   * force motion on anyone.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .orb {
+      animation: none !important;
+    }
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------------
+   * Glass surfaces
+   * ------------------------------------------------------------------- */
+
+  .glass {
+    background-image: var(--glass-bg);
+    background-color: rgba(255, 255, 255, 0.01);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--hairline);
+    @apply rounded-card shadow-card;
+  }
+
+  .glass-strong {
+    background-image: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--hairline);
+    @apply rounded-card shadow-raised;
+  }
+
+  /* Dense data areas: flatter glass, lighter blur, readable small text. */
+  .glass-dense {
+    background: var(--glass-bg-dense);
+    backdrop-filter: blur(var(--glass-blur-dense));
+    -webkit-backdrop-filter: blur(var(--glass-blur-dense));
+    border: 1px solid var(--hairline);
+    @apply rounded-card shadow-card;
+  }
+
+  /* Interactive glass — the hairline brightens and a warm bloom appears.
+     No colour swap, and the transition is ease-out only. */
+  .glass-interactive {
+    transition:
+      border-color 240ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .glass-interactive:hover {
+    border-color: var(--hairline-hover);
+    @apply shadow-glow;
+  }
+
+  /**
+   * A soft ambient blob. Purely decorative; always aria-hidden.
+   *
+   * Built from a radial gradient rather than a solid circle plus
+   * `filter: blur()`. The gradient's own falloff gives the same soft edge for
+   * free, while a 100px blur pass over a 40rem box is expensive enough to
+   * crash a renderer on a constrained device — which it did, once, on the
+   * emulated iPad. Only `transform` is animated, so this stays GPU-cheap.
+   */
+  .orb {
+    @apply pointer-events-none absolute rounded-full;
+  }
+  .orb-wine {
+    background: radial-gradient(closest-side, rgba(159, 18, 57, 0.34), rgba(159, 18, 57, 0) 100%);
+  }
+  .orb-rose {
+    background: radial-gradient(closest-side, rgba(190, 24, 93, 0.28), rgba(190, 24, 93, 0) 100%);
+  }
+  .orb-gold {
+    background: radial-gradient(closest-side, rgba(212, 175, 55, 0.20), rgba(212, 175, 55, 0) 100%);
+  }
+
+  /**
+   * The single gold hairline allowed on a featured card (gold role #3).
+   * Sits flush along the top edge and fades out at both ends.
+   */
+  .accent-line {
+    position: relative;
+  }
+  .accent-line::before {
+    content: '';
+    position: absolute;
+    inset-inline: 1.25rem;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--hairline-gold) 22%,
+      var(--hairline-gold) 78%,
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  /**
+   * Lifecycle connectors: a hairline of flowing dashes between two nodes,
+   * to suggest live data moving through the pipeline. Rose, so the gold
+   * stays reserved. `-v` is the stacked (mobile) orientation.
+   */
+  .connector-h {
+    background-image: repeating-linear-gradient(
+      to right,
+      rgba(190, 24, 93, 0.85) 0 6px,
+      rgba(255, 255, 255, 0.06) 6px 14px
+    );
+    @apply animate-flow-x;
+  }
+  .connector-v {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(190, 24, 93, 0.85) 0 6px,
+      rgba(255, 255, 255, 0.06) 6px 14px
+    );
+    @apply animate-flow-y;
+  }
+  /* A connector past the current stage is inert — no flow, no colour. */
+  .connector-idle {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.08);
+    animation: none;
+  }
+
+  /* ---------------------------------------------------------------------
+   * Cards — roomier than before; premium reads as spacious.
+   * ------------------------------------------------------------------- */
+
+  .card {
+    background-image: var(--glass-bg);
+    background-color: rgba(255, 255, 255, 0.01);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--hairline);
+    @apply rounded-card shadow-card;
+  }
+
+  .card-header {
+    @apply flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6 sm:py-5;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .card-title {
+    @apply font-display text-[15px] font-semibold tracking-tight text-slate-900;
+  }
+
+  .card-body {
+    @apply p-5 sm:p-6;
+  }
+
+  /* ---------------------------------------------------------------------
+   * Form text
+   * ------------------------------------------------------------------- */
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+
+  .hint {
+    @apply mt-1.5 text-xs text-slate-500;
+  }
+
+  .field-error {
+    @apply mt-1.5 flex items-start gap-1 text-xs font-medium text-danger-700;
+  }
+
+  /* ---------------------------------------------------------------------
+   * Tables — flatter glass and hairline rules so dense text stays legible.
+   * ------------------------------------------------------------------- */
+
+  /* Horizontal scroll is contained per-table; the page body never scrolls sideways. */
+  .table-scroll {
+    @apply -mx-5 overflow-x-auto sm:mx-0;
+  }
+
+  .data-table {
+    @apply w-full min-w-[640px] border-collapse text-sm;
+  }
+
+  .data-table thead th {
+    @apply whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+
+  .data-table tbody td {
+    @apply px-4 py-3.5 align-middle text-slate-600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .data-table tbody tr {
+    transition: background-color 200ms ease-out;
+  }
+
+  .data-table tbody tr:hover {
+    background: rgba(190, 24, 93, 0.07);
+  }
+
+  /* Money and figures line up column to column. */
+  .data-table td,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .link {
+    @apply font-medium text-brand-300 underline-offset-2 transition-colors hover:text-brand-200 hover:underline;
+  }
+}
+
+@layer utilities {
+  /* Burgundy -> rose brand gradient, per the token spec. White text on it
+     clears AA at both ends (8.0:1 and 6.0:1). */
+  .bg-brand-gradient {
+    background-image: linear-gradient(135deg, theme('colors.brand.600'), theme('colors.brand.500'));
+  }
+
+  .bg-gold-gradient {
+    background-image: linear-gradient(135deg, theme('colors.gold.500'), theme('colors.gold.400'));
+  }
+
+  .text-brand-gradient {
+    background-image: linear-gradient(135deg, theme('colors.brand.300'), theme('colors.brand.400'));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Hero numbers: display serif, tight, with lining figures. */
+  .hero-number {
+    @apply font-display font-semibold tracking-tight text-slate-900;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-slate-300;
+  }
+}

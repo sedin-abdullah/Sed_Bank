@@ -1,0 +1,5001 @@
+{
+  "info": {
+    "_postman_id": "a7f3c1d2-8b64-4f19-9c3d-5e2a1b7f4d80",
+    "name": "SedBank API",
+    "description": "Full API coverage for the SedBank digital lending platform, organised by module.\n\nThe collection is written as an ordered regression run: it signs in as each role, walks one loan from application through disbursement, repayment and closure, exercises the admin masters, and asserts the role guards. Ids and tokens are passed between requests through collection variables, so it runs headlessly with Newman against local or deployed environments.\n\nRun with:\n  npm run test:api\n  newman run qa/postman/SedBank.postman_collection.json -e qa/postman/SedBank.local.postman_environment.json\n\nRequires ENABLE_TEST_HOOKS=true on the target API for the bureau `simulate` parameter and the loan back-dating hook.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "creditToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "opsToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "collectionsToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerMobile",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerPassword",
+      "value": "Passw0rd!23",
+      "type": "string"
+    },
+    {
+      "key": "applicationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "documentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bankId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bankCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staffUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staffEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staffMobile",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherMobile",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "loanId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "signature",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "nextDueAmount",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "foreclosureAmount",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "esignOtp",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherCustomerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "loginOtp",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mockOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mockPaymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mockSignature",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [],
+  "item": [
+    {
+      "name": "00 \u2014 Health",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "var data = pm.response.json().data;",
+                  "pm.test('service identifies itself', () => pm.expect(data.service).to.eql('sedbank-api'));",
+                  "pm.test('service is ok', () => pm.expect(data.status).to.eql('ok'));",
+                  "pm.test('test hooks are enabled for this run', () => pm.expect(data.testHooks).to.be.true);",
+                  "// Seed a unique customer identity for this whole run.",
+                  "var suffix = String(Date.now()).slice(-7);",
+                  "pm.collectionVariables.set('customerEmail', `newman.${suffix}@sedbank.test`);",
+                  "pm.collectionVariables.set('customerMobile', `9${suffix}11`.slice(0, 10));",
+                  "pm.collectionVariables.set('bankCode', `NEWMAN${suffix}`);",
+                  "// The staff user and the second borrower need their own identities.",
+                  "// Mobiles must match /^[6-9]\\d{9}$/, so each is built to exactly 10 digits.",
+                  "pm.collectionVariables.set('staffEmail', `newman.ops.${suffix}@sedbank.test`);",
+                  "pm.collectionVariables.set('staffMobile', `8${suffix}22`.slice(0, 10));",
+                  "pm.collectionVariables.set('otherEmail', `newman.other.${suffix}@sedbank.test`);",
+                  "pm.collectionVariables.set('otherMobile', `7${suffix}33`.slice(0, 10));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 \u2014 Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/login \u2014 admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('a token is issued', () => pm.expect(data.token).to.be.a('string').and.not.empty);",
+                  "pm.test('role is admin', () => pm.expect(data.user.role).to.eql('admin'));",
+                  "pm.test('the password hash is never returned', () => pm.expect(data.user).to.not.have.property('passwordHash'));",
+                  "pm.collectionVariables.set('adminToken', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@sedbank.test\",\n  \"password\": \"Admin@12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/login \u2014 credit officer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('role is credit_officer', () => pm.expect(data.user.role).to.eql('credit_officer'));",
+                  "pm.collectionVariables.set('creditToken', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"credit@sedbank.test\",\n  \"password\": \"Staff@12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/login \u2014 ops officer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('role is ops_officer', () => pm.expect(data.user.role).to.eql('ops_officer'));",
+                  "pm.collectionVariables.set('opsToken', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ops@sedbank.test\",\n  \"password\": \"Staff@12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/login \u2014 collections officer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.collectionVariables.set('collectionsToken', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"collections@sedbank.test\",\n  \"password\": \"Staff@12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/login \u2014 wrong password is 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));",
+                  "var body = pm.response.json();",
+                  "pm.test('failure envelope', () => pm.expect(body.success).to.be.false);",
+                  "pm.test('message does not reveal which field was wrong', function () {",
+                  "  pm.expect(body.error.message).to.match(/incorrect email or password/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@sedbank.test\",\n  \"password\": \"Wrong@12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/register \u2014 new customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('role defaults to customer', () => pm.expect(data.user.role).to.eql('customer'));",
+                  "pm.test('kyc starts not_started', () => pm.expect(data.user.kycStatus).to.eql('not_started'));",
+                  "pm.collectionVariables.set('customerToken', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Newman Test Borrower\",\n  \"email\": \"{{customerEmail}}\",\n  \"mobile\": \"{{customerMobile}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/register \u2014 weak password is 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "var body = pm.response.json();",
+                  "pm.test('field-level details are returned', function () {",
+                  "  pm.expect(body.error.details).to.be.an('array').and.not.empty;",
+                  "  pm.expect(body.error.details.some((d) => d.field === 'password')).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Weak Password\",\n  \"email\": \"weak.{{$timestamp}}@sedbank.test\",\n  \"mobile\": \"9111111111\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/register \u2014 duplicate email is 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('message mentions the conflict', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/already exists/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Duplicate\",\n  \"email\": \"{{customerEmail}}\",\n  \"mobile\": \"9222222222\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/otp/request \u2014 mobile login OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the mocked OTP is exposed outside production', function () {",
+                  "  pm.expect(data.devCode).to.match(/^\\d{6}$/);",
+                  "});",
+                  "pm.collectionVariables.set('loginOtp', data.devCode);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"{{customerMobile}}\",\n  \"purpose\": \"login\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "request"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/otp/verify \u2014 wrong code is 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"{{customerMobile}}\",\n  \"code\": \"000000\",\n  \"purpose\": \"login\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/otp/verify \u2014 correct code returns a session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('a session token is returned', () => pm.expect(data.token).to.be.a('string'));",
+                  "pm.test('the mobile is marked verified', () => pm.expect(data.user.mobileVerified).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"{{customerMobile}}\",\n  \"code\": \"{{loginOtp}}\",\n  \"purpose\": \"login\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/auth/me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('returns the signed-in customer', () => pm.expect(data.user.email).to.eql(pm.collectionVariables.get('customerEmail')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/auth/me \u2014 no token is 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/auth/me \u2014 tampered token is 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer not.a.valid.token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 \u2014 Eligibility & product",
+      "item": [
+        {
+          "name": "GET /api/product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('product limits are exposed', function () {",
+                  "  pm.expect(data.product.minAmount).to.be.a('number');",
+                  "  pm.expect(data.product.maxAmount).to.be.above(data.product.minAmount);",
+                  "});",
+                  "pm.test('credit policy is NOT exposed publicly', function () {",
+                  "  pm.expect(data.product).to.not.have.property('maxDti');",
+                  "  pm.expect(data.product).to.not.have.property('blacklistedPans');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/eligibility/check \u2014 eligible",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('applicant is eligible', () => pm.expect(data.eligible).to.be.true);",
+                  "pm.test('an indicative amount and EMI are returned', function () {",
+                  "  pm.expect(data.eligibleAmount).to.be.above(0);",
+                  "  pm.expect(data.emi).to.be.above(0);",
+                  "  pm.expect(data.indicativeRoi).to.be.above(0);",
+                  "});",
+                  "pm.test('FOIR stays within the policy limit', () => pm.expect(data.foir).to.be.at.most(data.maxFoir));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monthlyIncome\": 90000,\n  \"employmentType\": \"salaried\",\n  \"existingEmi\": 5000,\n  \"tenureMonths\": 24\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/eligibility/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "eligibility",
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/eligibility/check \u2014 income too low",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('applicant is not eligible', () => pm.expect(data.eligible).to.be.false);",
+                  "pm.test('a reason is given', () => pm.expect(data.reasons).to.be.an('array').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monthlyIncome\": 9000,\n  \"employmentType\": \"salaried\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/eligibility/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "eligibility",
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/eligibility/check \u2014 missing income is 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('validation details name the field', function () {",
+                  "  const details = pm.response.json().error.details;",
+                  "  pm.expect(details.some((d) => d.field.includes('monthlyIncome'))).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employmentType\": \"salaried\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/eligibility/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "eligibility",
+                "check"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 \u2014 Admin masters (banks & users)",
+      "item": [
+        {
+          "name": "POST /api/banks \u2014 add a disbursement account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('the bank is created', () => pm.expect(data.bank._id).to.be.a('string'));",
+                  "pm.test('the account number is masked in the response', function () {",
+                  "  pm.expect(data.bank).to.not.have.property('accountNumber');",
+                  "  pm.expect(data.bank.accountNumberMasked).to.eql('XXXX9012');",
+                  "});",
+                  "pm.collectionVariables.set('bankId', data.bank._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"SedBank Newman Payout\",\n  \"code\": \"{{bankCode}}\",\n  \"type\": \"disbursement\",\n  \"accountName\": \"SedBank Nodal\",\n  \"accountNumber\": \"123456789012\",\n  \"ifsc\": \"HDFC0001234\",\n  \"branch\": \"Chennai\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "banks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/banks \u2014 duplicate code is 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Duplicate Code Bank\",\n  \"code\": \"{{bankCode}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "banks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/banks \u2014 invalid IFSC is 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bad IFSC\",\n  \"code\": \"BADIFSC{{$randomInt}}\",\n  \"ifsc\": \"NOTANIFSC\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "banks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/banks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "var body = pm.response.json();",
+                  "pm.test('paginated list envelope', function () {",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  pm.expect(body.meta).to.have.property('total');",
+                  "  pm.expect(body.meta).to.have.property('page');",
+                  "});",
+                  "pm.test('the new bank is listed', function () {",
+                  "  pm.expect(body.data.some((b) => b._id === pm.collectionVariables.get('bankId'))).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/banks?page=1&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "banks"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/banks/:id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the branch was updated', () => pm.expect(data.bank.branch).to.eql('Chennai \u2014 Anna Salai'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch\": \"Chennai \u2014 Anna Salai\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banks/{{bankId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "banks",
+                "{{bankId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/users \u2014 add a staff user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('the user is created with the requested role', () => pm.expect(data.user.role).to.eql('ops_officer'));",
+                  "pm.test('a temporary password is returned once', () => pm.expect(data.temporaryPassword).to.be.a('string'));",
+                  "pm.collectionVariables.set('staffUserId', data.user._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Newman Ops Officer\",\n  \"email\": \"{{staffEmail}}\",\n  \"mobile\": \"{{staffMobile}}\",\n  \"role\": \"ops_officer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "var body = pm.response.json();",
+                  "pm.test('no password hash leaks in a list', function () {",
+                  "  body.data.forEach((u) => pm.expect(u).to.not.have.property('passwordHash'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users?page=1&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/users/:id \u2014 deactivate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the user is now inactive', () => pm.expect(data.user.status).to.eql('inactive'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inactive\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{staffUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{staffUserId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 \u2014 Configuration",
+      "item": [
+        {
+          "name": "GET /api/config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('product and underwriting policy are returned', function () {",
+                  "  pm.expect(data.config.product).to.be.an('object');",
+                  "  pm.expect(data.config.underwriting).to.have.property('minScore');",
+                  "  pm.expect(data.config.underwriting).to.have.property('autoApproveScore');",
+                  "  pm.expect(data.config.underwriting).to.have.property('maxDti');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /api/config \u2014 inverted thresholds are 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('cross-field validation fires', function () {",
+                  "  pm.expect(pm.response.json().error.details).to.be.an('array').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"underwriting\": {\n    \"minScore\": 800,\n    \"autoApproveScore\": 700\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /api/config \u2014 set known thresholds for this run",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('thresholds are applied', function () {",
+                  "  pm.expect(data.config.underwriting.minScore).to.eql(600);",
+                  "  pm.expect(data.config.underwriting.autoApproveScore).to.eql(750);",
+                  "  pm.expect(data.config.underwriting.maxDti).to.eql(0.5);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"underwriting\": {\n    \"minScore\": 600,\n    \"autoApproveScore\": 750,\n    \"maxDti\": 0.5,\n    \"minMonthlyIncome\": 15000\n  },\n  \"product\": {\n    \"minAmount\": 50000,\n    \"maxAmount\": 2000000,\n    \"minTenureMonths\": 6,\n    \"maxTenureMonths\": 60,\n    \"processingFeePct\": 2,\n    \"latePenaltyPct\": 2,\n    \"foreclosureChargePct\": 3\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "config"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 \u2014 Loan origination (LOS)",
+      "item": [
+        {
+          "name": "POST /api/applications \u2014 submit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('an application number is assigned', () => pm.expect(data.application.applicationNo).to.match(/^SB-APP-\\d+$/));",
+                  "pm.test('status is submitted', () => pm.expect(data.application.status).to.eql('submitted'));",
+                  "pm.test('the stage advances to kyc', () => pm.expect(data.application.stage).to.eql('kyc'));",
+                  "pm.collectionVariables.set('applicationId', data.application._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountRequested\": 400000,\n  \"tenureRequested\": 24,\n  \"purpose\": \"home_renovation\",\n  \"employment\": {\n    \"type\": \"salaried\",\n    \"employerName\": \"Sedin Technologies\",\n    \"monthlyIncome\": 90000,\n    \"existingEmi\": 5000,\n    \"experienceYears\": 5\n  },\n  \"personal\": {\n    \"fullName\": \"Newman Test Borrower\",\n    \"city\": \"Chennai\",\n    \"state\": \"Tamil Nadu\",\n    \"pincode\": \"600001\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications \u2014 a second open application is 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('message explains the block', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/already have an application/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountRequested\": 100000,\n  \"tenureRequested\": 12,\n  \"purpose\": \"travel\",\n  \"employment\": {\n    \"type\": \"salaried\",\n    \"monthlyIncome\": 90000\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/bureau \u2014 blocked before KYC (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('the reason names KYC', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/kyc/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/bureau",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "bureau"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/kyc \u2014 invalid PAN is 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pan\": \"BADPAN\",\n  \"aadhaar\": \"123412341234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "kyc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/kyc \u2014 verify",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('KYC is verified', () => pm.expect(data.application.kyc.status).to.eql('verified'));",
+                  "pm.test('only the last 4 Aadhaar digits are stored', function () {",
+                  "  pm.expect(data.application.kyc.aadhaarLast4).to.eql('1234');",
+                  "  pm.expect(JSON.stringify(data.application.kyc)).to.not.include('123412341234');",
+                  "});",
+                  "pm.test('the stage advances to documents', () => pm.expect(data.application.stage).to.eql('documents'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pan\": \"ABCDE1234F\",\n  \"aadhaar\": \"123412341234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "kyc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/documents \u2014 upload income proof",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('the document is attached', () => pm.expect(data.document._id).to.be.a('string'));",
+                  "pm.test('verification starts pending', () => pm.expect(data.document.verificationStatus).to.eql('pending'));",
+                  "pm.collectionVariables.set('documentId', data.document._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "income_proof",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "src": "./fixtures/payslip.pdf",
+                  "type": "file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "documents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/applications/:id/documents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the uploaded document is listed', () => pm.expect(data.documents.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "documents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/bureau \u2014 pull and auto-decide",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('a bureau score in range is returned', function () {",
+                  "  pm.expect(data.report.score).to.be.within(800, 900);",
+                  "});",
+                  "pm.test('the rule engine auto-approved it', () => pm.expect(data.decision.decision).to.eql('auto_approved'));",
+                  "pm.test('an offer is priced', function () {",
+                  "  pm.expect(data.decision.offer.amount).to.be.above(0);",
+                  "  pm.expect(data.decision.offer.emi).to.be.above(0);",
+                  "  pm.expect(data.decision.offer.roi).to.be.above(0);",
+                  "});",
+                  "pm.test('FOIR is recorded and within policy', () => pm.expect(data.decision.dti).to.be.at.most(0.5));",
+                  "pm.test('the application is approved', () => pm.expect(data.application.status).to.eql('approved'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"simulate\": \"excellent\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/bureau",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "bureau"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/applications/:id \u2014 360 view",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('obligations are computed for underwriting', function () {",
+                  "  pm.expect(data.obligations.monthlyIncome).to.eql(90000);",
+                  "  pm.expect(data.obligations.projectedFoir).to.be.a('number');",
+                  "  pm.expect(data.obligations.maxFoir).to.be.a('number');",
+                  "  pm.expect(data.obligations.withinPolicy).to.be.true;",
+                  "});",
+                  "pm.test('the bureau report is attached', () => pm.expect(data.application.bureauReport).to.be.an('object'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/loans/disburse/:id \u2014 blocked before e-sign (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('the reason names the agreement', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/e-signed/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"{{bankId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/disburse/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "disburse",
+                "{{applicationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/offer/accept",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the offer is accepted', () => pm.expect(data.application.status).to.eql('offer_accepted'));",
+                  "pm.test('an acceptance timestamp is recorded', () => pm.expect(data.application.offer.acceptedAt).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/offer/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "offer",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/agreement/otp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('an e-sign OTP is issued', () => pm.expect(data.devCode).to.match(/^\\d{6}$/));",
+                  "pm.collectionVariables.set('esignOtp', data.devCode);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/agreement/otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "agreement",
+                "otp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/agreement/sign \u2014 wrong OTP is 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"000000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/agreement/sign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "agreement",
+                "sign"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/agreement/sign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the agreement is signed', () => pm.expect(data.application.status).to.eql('agreement_signed'));",
+                  "pm.test('consent text is captured', () => pm.expect(data.application.agreement.consentText).to.be.a('string').and.not.empty);",
+                  "pm.test('the stage advances to disbursement', () => pm.expect(data.application.stage).to.eql('disbursement'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{esignOtp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/agreement/sign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "agreement",
+                "sign"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/bank-account \u2014 penny drop fails",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('the failure reason is returned', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/penny drop failed/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountHolder\": \"Newman Test Borrower\",\n  \"accountNumber\": \"111122220000\",\n  \"ifsc\": \"ICIC0001111\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/bank-account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "bank-account"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/applications/:id/bank-account \u2014 penny drop verified",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the account is verified', () => pm.expect(data.application.bankAccount.verified).to.be.true);",
+                  "pm.test('a penny-drop reference is stored', () => pm.expect(data.verification.referenceId).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountHolder\": \"Newman Test Borrower\",\n  \"accountNumber\": \"111122223333\",\n  \"ifsc\": \"ICIC0001111\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/bank-account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "bank-account"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/applications/:id/timeline",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the audit trail has entries', () => pm.expect(data.timeline.length).to.be.above(3));",
+                  "pm.test('key events are recorded', function () {",
+                  "  const actions = data.timeline.map((e) => e.action);",
+                  "  pm.expect(actions).to.include('application.submitted');",
+                  "  pm.expect(actions).to.include('kyc.verified');",
+                  "  pm.expect(actions).to.include('bureau.pulled');",
+                  "  pm.expect(actions).to.include('agreement.signed');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/timeline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "timeline"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 \u2014 Underwriting & documents",
+      "item": [
+        {
+          "name": "GET /api/underwriting/queue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the worklist is a paginated array', function () {",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{creditToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/underwriting/queue?status=queue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "underwriting",
+                "queue"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "queue"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/underwriting/:id/decision \u2014 decided file is 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('the reason names the current status', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/no longer in the underwriting queue/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{creditToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approved\",\n  \"remarks\": \"Attempting to re-approve an already-signed application.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/underwriting/{{applicationId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "underwriting",
+                "{{applicationId}}",
+                "decision"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/underwriting/:id/decision \u2014 missing remarks is 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{creditToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"rejected\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/underwriting/{{applicationId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "underwriting",
+                "{{applicationId}}",
+                "decision"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/documents/pending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the ops queue is an array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "documents",
+                "pending"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/documents/:id/verify",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the document is verified', () => pm.expect(data.document.verificationStatus).to.eql('verified'));",
+                  "pm.test('the verifier is recorded', () => pm.expect(data.document.verifiedBy).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"verified\",\n  \"remarks\": \"Payslip matches the declared income.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/{{documentId}}/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "documents",
+                "{{documentId}}",
+                "verify"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 \u2014 Disbursement (LMS)",
+      "item": [
+        {
+          "name": "POST /api/loans/disburse/:applicationId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('a loan number is assigned', () => pm.expect(data.loan.loanNo).to.match(/^SB-LN-\\d+$/));",
+                  "pm.test('the loan is active', () => pm.expect(data.loan.status).to.eql('active'));",
+                  "pm.test('the processing fee is deducted at source', function () {",
+                  "  const expected = Math.round((data.loan.sanctionedAmount - data.loan.processingFee) * 100) / 100;",
+                  "  pm.expect(data.loan.disbursedAmount).to.eql(expected);",
+                  "});",
+                  "pm.test('principal outstanding starts at the sanctioned amount', function () {",
+                  "  pm.expect(data.loan.principalOutstanding).to.eql(data.loan.sanctionedAmount);",
+                  "});",
+                  "pm.test('dates are set', function () {",
+                  "  pm.expect(data.loan.disbursedAt).to.be.a('string');",
+                  "  pm.expect(data.loan.firstEmiDate).to.be.a('string');",
+                  "  pm.expect(data.loan.maturityDate).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('loanId', data.loan._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"{{bankId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/disburse/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "disburse",
+                "{{applicationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/loans/disburse/:applicationId \u2014 double disbursement is 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('the reason names the prior disbursement', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/already been disbursed/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"{{bankId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/disburse/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "disburse",
+                "{{applicationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/loans/:id/schedule \u2014 amortisation integrity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "var schedule = data.schedule;",
+                  "",
+                  "pm.test('one row per month of tenure', () => pm.expect(schedule).to.have.lengthOf(24));",
+                  "",
+                  "pm.test('principal components sum to the sanctioned amount', function () {",
+                  "  const sum = Math.round(schedule.reduce((t, r) => t + r.principal, 0) * 100) / 100;",
+                  "  pm.expect(sum).to.eql(400000);",
+                  "});",
+                  "",
+                  "pm.test('the final closing balance is zero', function () {",
+                  "  pm.expect(schedule[schedule.length - 1].closingBalance).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test('every row balances internally', function () {",
+                  "  schedule.forEach((row) => {",
+                  "    const total = Math.round((row.principal + row.interest) * 100) / 100;",
+                  "    pm.expect(total).to.eql(row.totalAmount);",
+                  "    const closing = Math.round((row.openingBalance - row.principal) * 100) / 100;",
+                  "    pm.expect(closing).to.eql(row.closingBalance);",
+                  "  });",
+                  "});",
+                  "",
+                  "pm.test('interest declines across the term', function () {",
+                  "  pm.expect(schedule[0].interest).to.be.above(schedule[schedule.length - 1].interest);",
+                  "});",
+                  "",
+                  "pm.test('every installment starts pending', function () {",
+                  "  schedule.forEach((row) => pm.expect(row.status).to.eql('pending'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}",
+                "schedule"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/loans/:id \u2014 servicing view",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the next due installment is identified', function () {",
+                  "  pm.expect(data.nextDue.installmentNo).to.eql(1);",
+                  "  pm.expect(data.nextDue.amountDue).to.be.above(0);",
+                  "});",
+                  "pm.collectionVariables.set('nextDueAmount', String(data.nextDue.amountDue));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/loans/:id/schedule.pdf",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('content type is PDF', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "});",
+                  "pm.test('the body is a real PDF', function () {",
+                  "  pm.expect(pm.response.text().slice(0, 4)).to.eql('%PDF');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}/schedule.pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}",
+                "schedule.pdf"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/loans/:id/noc.pdf \u2014 refused on a live loan (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('the reason explains why', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/fully settled/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}/noc.pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}",
+                "noc.pdf"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 \u2014 Payments",
+      "item": [
+        {
+          "name": "POST /api/payments/initiate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('a gateway order is created', function () {",
+                  "  pm.expect(data.order.orderId).to.be.a('string').and.include('order_mock_');",
+                  "  pm.expect(data.order.currency).to.eql('INR');",
+                  "});",
+                  "pm.test('the sandbox mints a checkout result', function () {",
+                  "  pm.expect(data.order.sandboxCheckout.paymentId).to.be.a('string');",
+                  "  pm.expect(data.order.sandboxCheckout.signature).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('orderId', data.order.orderId);",
+                  "pm.collectionVariables.set('paymentId', data.order.sandboxCheckout.paymentId);",
+                  "pm.collectionVariables.set('signature', data.order.sandboxCheckout.signature);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"{{loanId}}\",\n  \"amount\": {{nextDueAmount}},\n  \"type\": \"emi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/initiate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "initiate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/payments/confirm \u2014 tampered signature is 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('signature verification failed', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/signature verification failed|tampered/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"signature\": \"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/payments/confirm \u2014 record the EMI",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('a receipt number is issued', () => pm.expect(data.payment.paymentNo).to.match(/^SB-PAY-\\d+$/));",
+                  "pm.test('the payment is split into components', function () {",
+                  "  pm.expect(data.payment.principalComponent).to.be.above(0);",
+                  "  pm.expect(data.payment.interestComponent).to.be.above(0);",
+                  "  const sum = data.payment.principalComponent + data.payment.interestComponent + data.payment.penaltyComponent;",
+                  "  pm.expect(Math.round(sum * 100) / 100).to.eql(data.payment.amount);",
+                  "});",
+                  "pm.test('the ledger reduces the principal', function () {",
+                  "  pm.expect(data.loan.principalOutstanding).to.be.below(data.loan.sanctionedAmount);",
+                  "});",
+                  "pm.test('the loan is not closed by one EMI', () => pm.expect(data.closed).to.be.false);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"signature\": \"{{signature}}\",\n  \"type\": \"emi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/payments/confirm \u2014 replay is 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('the duplicate is named', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/already been recorded/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"signature\": \"{{signature}}\",\n  \"type\": \"emi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/payments \u2014 ledger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('exactly one payment was recorded', function () {",
+                  "  pm.expect(pm.response.json().data).to.have.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/payments/record \u2014 ops records a part payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('the schedule is re-cut after prepayment', function () {",
+                  "  pm.expect(data.regeneration).to.be.an('object');",
+                  "  pm.expect(data.regeneration.newEmi).to.be.above(0);",
+                  "  pm.expect(data.regeneration.installmentsRecut).to.be.above(0);",
+                  "});",
+                  "pm.test('the EMI is reduced, tenure unchanged', function () {",
+                  "  pm.expect(data.loan.emiAmount).to.eql(data.regeneration.newEmi);",
+                  "  pm.expect(data.loan.tenureMonths).to.eql(24);",
+                  "});",
+                  "pm.test('prepaid principal is tracked on the loan', function () {",
+                  "  pm.expect(data.loan.principalPrepaid).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"{{loanId}}\",\n  \"amount\": 50000,\n  \"type\": \"part_payment\",\n  \"mode\": \"neft\",\n  \"notes\": \"Newman regression part-prepayment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "record"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 \u2014 Collections",
+      "item": [
+        {
+          "name": "POST /api/testing/backdate-loan \u2014 age the schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the loan is now delinquent', function () {",
+                  "  pm.expect(data.loan.dpd).to.be.above(0);",
+                  "  pm.expect(data.loan.overdueAmount).to.be.above(0);",
+                  "  pm.expect(data.loan.status).to.eql('overdue');",
+                  "});",
+                  "pm.test('a late fee was charged', () => pm.expect(data.loan.penaltyAccrued).to.be.above(0));",
+                  "pm.test('the ageing bucket is assigned', function () {",
+                  "  pm.expect(['1-30', '31-60', '61-90', '90+']).to.include(data.loan.bucket);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"{{loanId}}\",\n  \"days\": 75\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/testing/backdate-loan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "testing",
+                "backdate-loan"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/collections/overview",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('all five ageing buckets are reported', () => pm.expect(data.buckets).to.have.lengthOf(5));",
+                  "pm.test('the delinquency is counted', function () {",
+                  "  pm.expect(data.totals.delinquentAccounts).to.be.above(0);",
+                  "  pm.expect(data.totals.totalOverdue).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{collectionsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/collections/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "collections",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/collections/accounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "var rows = pm.response.json().data;",
+                  "pm.test('the delinquent loan is in the worklist', function () {",
+                  "  pm.expect(rows.some((r) => r._id === pm.collectionVariables.get('loanId'))).to.be.true;",
+                  "});",
+                  "pm.test('the oldest overdue installment is attached', function () {",
+                  "  const row = rows.find((r) => r._id === pm.collectionVariables.get('loanId'));",
+                  "  pm.expect(row.oldestOverdue).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{collectionsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/collections/accounts?bucket=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "collections",
+                "accounts"
+              ],
+              "query": [
+                {
+                  "key": "bucket",
+                  "value": "all"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/collections/:loanId/notes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('the note is logged', () => pm.expect(data.note._id).to.be.a('string'));",
+                  "pm.test('the bucket at entry is snapshotted', () => pm.expect(data.note.bucketAtEntry).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{collectionsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activityType\": \"call\",\n  \"outcome\": \"promise_to_pay\",\n  \"notes\": \"Spoke to the borrower; they will clear the overdue EMIs this week.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/collections/{{loanId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "collections",
+                "{{loanId}}",
+                "notes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/collections/:loanId/notes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the note is returned', () => pm.expect(data.notes).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{collectionsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/collections/{{loanId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "collections",
+                "{{loanId}}",
+                "notes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/collections/remind",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('one reminder was dispatched', () => pm.expect(data.sent).to.eql(1));",
+                  "pm.test('a per-account result is returned', function () {",
+                  "  pm.expect(data.results[0].sent).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{collectionsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanIds\": [\"{{loanId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/collections/remind",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "collections",
+                "remind"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 \u2014 Foreclosure & closure",
+      "item": [
+        {
+          "name": "GET /api/loans/:id/foreclosure-quote",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "var q = data.quote;",
+                  "pm.test('the quote itemises the settlement', function () {",
+                  "  pm.expect(q.principalOutstanding).to.be.above(0);",
+                  "  pm.expect(q.foreclosureCharge).to.be.at.least(0);",
+                  "  pm.expect(q.totalPayable).to.be.above(q.principalOutstanding);",
+                  "});",
+                  "pm.test('the total adds up', function () {",
+                  "  const sum = q.principalOutstanding + q.accruedInterest + q.outstandingPenalty + q.foreclosureCharge;",
+                  "  pm.expect(Math.round(sum * 100) / 100).to.eql(q.totalPayable);",
+                  "});",
+                  "pm.collectionVariables.set('foreclosureAmount', String(q.totalPayable));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}/foreclosure-quote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}",
+                "foreclosure-quote"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/payments/record \u2014 underpaid foreclosure is 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('the full settlement amount is demanded', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/full settlement amount/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"{{loanId}}\",\n  \"amount\": 1000,\n  \"type\": \"foreclosure\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "record"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/payments/record \u2014 foreclose in full",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.test('the loan closes', () => pm.expect(data.closed).to.be.true);",
+                  "pm.test('status is foreclosed', () => pm.expect(data.loan.status).to.eql('foreclosed'));",
+                  "pm.test('nothing remains outstanding', function () {",
+                  "  pm.expect(data.loan.principalOutstanding).to.eql(0);",
+                  "  pm.expect(data.loan.overdueAmount).to.eql(0);",
+                  "  pm.expect(data.loan.overdueEmiCount).to.eql(0);",
+                  "  pm.expect(data.loan.dpd).to.eql(0);",
+                  "});",
+                  "pm.test('a closure reason and date are recorded', function () {",
+                  "  pm.expect(data.loan.closedAt).to.be.a('string');",
+                  "  pm.expect(data.loan.closureReason).to.match(/foreclosed/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"{{loanId}}\",\n  \"amount\": {{foreclosureAmount}},\n  \"type\": \"foreclosure\",\n  \"mode\": \"neft\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "record"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/loans/:id/noc.pdf \u2014 issued after closure",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('content type is PDF', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "});",
+                  "pm.test('the body is a real PDF', () => pm.expect(pm.response.text().slice(0, 4)).to.eql('%PDF'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}/noc.pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}",
+                "noc.pdf"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/loans/:id/statement.pdf",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the body is a real PDF', () => pm.expect(pm.response.text().slice(0, 4)).to.eql('%PDF'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}/statement.pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}",
+                "statement.pdf"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/payments/record \u2014 a closed loan is 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('the reason names the closed status', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/cannot accept payments/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"{{loanId}}\",\n  \"amount\": 5000,\n  \"type\": \"emi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "record"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 \u2014 Dashboards & audit",
+      "item": [
+        {
+          "name": "GET /api/dashboard/admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('KPIs reflect the lifecycle just exercised', function () {",
+                  "  pm.expect(data.kpis.totalApplications).to.be.above(0);",
+                  "  pm.expect(data.kpis.disbursed).to.be.above(0);",
+                  "  pm.expect(data.kpis.closedLoans).to.be.above(0);",
+                  "  pm.expect(data.kpis.totalDisbursedAmount).to.be.above(0);",
+                  "  pm.expect(data.kpis.totalCollected).to.be.above(0);",
+                  "});",
+                  "pm.test('master-data counts are present', function () {",
+                  "  pm.expect(data.kpis.totalUsers).to.be.above(0);",
+                  "  pm.expect(data.kpis.totalBanks).to.be.above(0);",
+                  "});",
+                  "pm.test('the trend series covers six months', () => pm.expect(data.trend).to.have.lengthOf(6));",
+                  "pm.test('ageing buckets are reported', () => pm.expect(data.overdueBuckets).to.have.lengthOf(4));",
+                  "pm.test('the activity feed is populated', () => pm.expect(data.recentActivity.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/dashboard/customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('borrower totals are correct', function () {",
+                  "  pm.expect(data.kpis.totalBorrowed).to.eql(400000);",
+                  "  pm.expect(data.kpis.totalRepaid).to.be.above(0);",
+                  "  pm.expect(data.kpis.totalOutstanding).to.eql(0);",
+                  "  pm.expect(data.kpis.activeLoans).to.eql(0);",
+                  "});",
+                  "pm.test('the closed loan is still listed', () => pm.expect(data.loans).to.have.lengthOf(1));",
+                  "pm.test('no active loan remains', () => pm.expect(data.activeLoan).to.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/customer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "customer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the borrower received notifications', () => pm.expect(data.notifications.length).to.be.above(0));",
+                  "pm.test('an unread count is returned', () => pm.expect(data.unreadCount).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/notifications/read-all",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the unread count is cleared', () => pm.expect(data.unreadCount).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "read-all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/audit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "var rows = pm.response.json().data;",
+                  "pm.test('the trail records the whole lifecycle', function () {",
+                  "  const actions = rows.map((r) => r.action);",
+                  "  pm.expect(actions).to.include('loan.disbursed');",
+                  "  pm.expect(actions.some((a) => a.startsWith('payment.'))).to.be.true;",
+                  "});",
+                  "pm.test('every entry names an actor', function () {",
+                  "  rows.forEach((r) => pm.expect(r.performedByName).to.be.a('string').and.not.empty);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit?page=1&limit=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 \u2014 Mock integrations",
+      "item": [
+        {
+          "name": "POST /api/mock/kyc/verify",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('a valid PAN verifies', () => pm.expect(data.pan.verified).to.be.true);",
+                  "pm.test('Aadhaar returns only the last 4 digits', function () {",
+                  "  pm.expect(data.aadhaar.verified).to.be.true;",
+                  "  pm.expect(data.aadhaar.last4).to.eql('1234');",
+                  "});",
+                  "pm.test('the response is labelled as simulated', () => pm.expect(data.notice).to.match(/simulated/i));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pan\": \"ABCDE1234F\",\n  \"aadhaar\": \"123412341234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mock/kyc/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mock",
+                "kyc",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/mock/bureau/score",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the score is inside the 300\u2013900 range', function () {",
+                  "  pm.expect(data.report.score).to.be.within(300, 900);",
+                  "});",
+                  "pm.test('a coherent report summary is returned', function () {",
+                  "  pm.expect(data.report.summary).to.have.property('openAccounts');",
+                  "  pm.expect(data.report.summary).to.have.property('creditUtilizationPct');",
+                  "  pm.expect(data.report.factors).to.be.an('array').and.not.empty;",
+                  "});",
+                  "pm.test('the payload is labelled as simulated', () => pm.expect(data.report.disclaimer).to.match(/simulated/i));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{creditToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"simulate\": \"random\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mock/bureau/score",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mock",
+                "bureau",
+                "score"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/mock/penny-drop",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the account verifies', () => pm.expect(data.result.verified).to.be.true);",
+                  "pm.test('a reference is returned', () => pm.expect(data.result.referenceId).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountNumber\": \"555566667777\",\n  \"ifsc\": \"SBIN0001234\",\n  \"accountHolder\": \"Newman Test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mock/penny-drop",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mock",
+                "penny-drop"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/mock/payment/order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('an order is minted in paise', function () {",
+                  "  pm.expect(data.order.amount).to.eql(500000);",
+                  "  pm.expect(data.order.currency).to.eql('INR');",
+                  "});",
+                  "pm.collectionVariables.set('mockOrderId', data.order.orderId);",
+                  "pm.collectionVariables.set('mockPaymentId', data.sandboxCheckout.paymentId);",
+                  "pm.collectionVariables.set('mockSignature', data.sandboxCheckout.signature);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000,\n  \"loanAccountId\": \"demo\",\n  \"purpose\": \"emi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mock/payment/order",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mock",
+                "payment",
+                "order"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/mock/payment/verify",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('the signature verifies', () => pm.expect(data.verified).to.be.true);",
+                  "pm.test('the amount round-trips correctly', () => pm.expect(data.amount).to.eql(5000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{opsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{mockOrderId}}\",\n  \"paymentId\": \"{{mockPaymentId}}\",\n  \"signature\": \"{{mockSignature}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mock/payment/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mock",
+                "payment",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/mock/outbox",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(200);",
+                  "pm.test('simulated messages were dispatched', () => pm.expect(data.messages.length).to.be.above(0));",
+                  "pm.test('nothing was actually delivered', function () {",
+                  "  data.messages.forEach((m) => pm.expect(m.simulated).to.be.true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mock/outbox",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mock",
+                "outbox"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 \u2014 Role-based access control",
+      "item": [
+        {
+          "name": "GET /api/underwriting/queue \u2014 customer is 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/underwriting/queue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "underwriting",
+                "queue"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/users \u2014 customer is 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/config \u2014 customer is 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/config \u2014 credit officer is 403 (admin only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{creditToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/users \u2014 credit officer is 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{creditToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Escalation Attempt\",\n  \"email\": \"escalate.{{$timestamp}}@sedbank.test\",\n  \"mobile\": \"9333333333\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/collections/overview \u2014 credit officer is 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{creditToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/collections/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "collections",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/audit \u2014 customer is 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/dashboard/admin \u2014 no token is 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/register \u2014 a second, unrelated customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Asserts the status code and the { success, data } envelope, returning `data`.",
+                  "var data = (function (expectedStatus) {",
+                  "  pm.test('status is ' + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "  });",
+                  "  var body = pm.response.json();",
+                  "  pm.test('response uses the success envelope', function () {",
+                  "    pm.expect(body).to.have.property('success', true);",
+                  "    pm.expect(body).to.have.property('data');",
+                  "  });",
+                  "  return body.data;",
+                  "})(201);",
+                  "pm.collectionVariables.set('otherCustomerToken', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Unrelated Borrower\",\n  \"email\": \"{{otherEmail}}\",\n  \"mobile\": \"{{otherMobile}}\",\n  \"password\": \"Passw0rd!23\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/loans/:id \u2014 a different customer is 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('access is refused by ownership, not by 404', function () {",
+                  "  pm.expect(pm.response.json().error.message).to.match(/do not have access/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherCustomerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/unknown-route \u2014 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('failure envelope', () => pm.expect(pm.response.json().success).to.be.false);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/unknown-route",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "unknown-route"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

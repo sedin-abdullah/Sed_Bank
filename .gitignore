@@ -1,0 +1,20 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+backend/uploads/
+*.log
+.DS_Store
+coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+.vercel
+.vite
+
+# Generated QA artefacts. The Newman report embeds live JWTs and demo
+# credentials from the run, and is ~3MB — never commit it.
+qa/reports/
