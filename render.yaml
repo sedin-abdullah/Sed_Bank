@@ -1,0 +1,58 @@
+# Render blueprint for the SedBank API.
+#
+# Optional: you can configure the same thing by hand in the Render dashboard.
+# Its value is that the settings the app actually needs are written down here
+# rather than living only in someone's browser tab.
+#
+# Render supplies PORT itself; src/config/env.js reads it, so it is not listed.
+services:
+  - type: web
+    name: sedbank-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    # backend/package-lock.json is committed, so `ci` is reproducible.
+    # Dev dependencies are skipped: the only one the runtime could reach is
+    # mongodb-memory-server, and that is imported solely when MONGO_URI is
+    # empty — which it never is here.
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # env.js throws on boot if this is still the bundled dev value, so let
+      # Render mint a strong one.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Paste the Atlas SRV string. Must include a database name, e.g.
+      #   mongodb+srv://USER:PASS@cluster.mongodb.net/sedbank?retryWrites=true&w=majority
+      - key: MONGO_URI
+        sync: false
+
+      # Comma-separated browser origins. Add the Vercel URL, no trailing slash.
+      - key: CORS_ORIGINS
+        sync: false
+
+      # With a real MONGO_URI the boot seeder is skipped by default, which
+      # would leave the database with no accounts to sign in with. This
+      # provisions the five demo logins; it is idempotent, so leaving it on
+      # is harmless.
+      - key: SEED_ON_BOOT
+        value: 'true'
+
+      # Returns the mocked OTP in API responses. Off by default in
+      # production, but the e-sign step cannot be completed without it
+      # because there is no real SMS vendor wired up. Keep it on ONLY while
+      # this is a demo.
+      - key: EXPOSE_OTP
+        value: 'true'
+
+      # Loan back-dating and data reset. Must stay false outside testing.
+      - key: ENABLE_TEST_HOOKS
+        value: 'false'
+
+      - key: DELINQUENCY_SWEEP_MINUTES
+        value: '15'
