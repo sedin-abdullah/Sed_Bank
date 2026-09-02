@@ -81,13 +81,21 @@ function deriveActiveStep({
 
   if (status === APPLICATION_STATUS.SENT_BACK) return 'sent_back';
   if (status === APPLICATION_STATUS.IN_REVIEW) return 'in_review';
-  if (!bureau) return 'bureau';
-  if (status === APPLICATION_STATUS.APPROVED) return 'offer';
 
+  /*
+   * Decided statuses are checked BEFORE the bureau gate. An officer can
+   * approve or send back an application without anyone pulling a bureau
+   * report, and when that happened the borrower used to be pinned on the
+   * credit-check panel with an offer already waiting behind it — no way
+   * forward at all.
+   */
   if (status === APPLICATION_STATUS.OFFER_ACCEPTED) return 'esign';
   if (status === APPLICATION_STATUS.AGREEMENT_SIGNED) {
     return application.bankAccount?.verified ? 'awaiting_disbursement' : 'bank';
   }
+  if (status === APPLICATION_STATUS.APPROVED) return 'offer';
+
+  if (!bureau) return 'bureau';
   return 'documents';
 }
 
