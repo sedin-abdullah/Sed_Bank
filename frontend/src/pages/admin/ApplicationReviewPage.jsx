@@ -226,10 +226,19 @@ export default function ApplicationReviewPage() {
   const readyToDisburse = application.status === APPLICATION_STATUS.AGREEMENT_SIGNED;
   const pendingDocs = documents.filter((doc) => doc.verificationStatus === 'pending');
 
-  // Everything ops must confirm before the disburse button can do anything.
+  /**
+   * Everything ops must confirm before funds can be released.
+   *
+   * `blocking: false` items are shown for diligence but do not gate the
+   * button. The bureau report is one: an officer can approve an application
+   * without anyone pulling a report, and the API does not require one either
+   * — so blocking on it left a manually-approved loan permanently
+   * un-disbursable, with the credit decision already made and the agreement
+   * already signed.
+   */
   const checklist = [
     { label: 'KYC verified', done: application.kyc?.status === 'verified' },
-    { label: 'Bureau report on file', done: !!bureau },
+    { label: 'Bureau report on file', done: !!bureau, blocking: false },
     { label: 'Offer accepted by applicant', done: !!offer?.acceptedAt },
     { label: 'Loan agreement e-signed', done: !!application.agreement?.signedAt },
     { label: 'Payout account penny-drop verified', done: !!application.bankAccount?.verified },
@@ -238,7 +247,7 @@ export default function ApplicationReviewPage() {
       done: documents.length > 0 && pendingDocs.length === 0,
     },
   ];
-  const checklistComplete = checklist.every((item) => item.done);
+  const checklistComplete = checklist.every((item) => item.done || item.blocking === false);
 
   return (
     <div data-testid={TESTIDS.adminReview.root}>
@@ -830,12 +839,23 @@ export default function ApplicationReviewPage() {
                 <span
                   className={cn(
                     'flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
-                    item.done ? 'bg-success-100 text-success-700' : 'bg-slate-100 text-slate-400'
+                    item.done
+                      ? 'bg-success-500/15 text-success-500'
+                      : item.blocking === false
+                        ? 'bg-white/[0.06] text-slate-500'
+                        : 'bg-danger-500/15 text-danger-500'
                   )}
                 >
                   {item.done ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                 </span>
-                <span className={item.done ? 'text-slate-700' : 'text-slate-500'}>{item.label}</span>
+                <span className={item.done ? 'text-slate-700' : 'text-slate-500'}>
+                  {item.label}
+                  {!item.done && item.blocking === false ? (
+                    <span className="ml-1.5 text-xs text-slate-500">
+                      — not on file; approved on an officer's decision
+                    </span>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>
