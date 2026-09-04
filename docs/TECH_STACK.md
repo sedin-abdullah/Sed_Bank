@@ -26,7 +26,7 @@ sedbank/
 | Validation | Zod, at the route boundary |
 | PDFs | `pdf-lib` — schedules, statements, NOCs |
 | Security | Helmet, CORS allowlist |
-| Uploads | Multer to local disk |
+| Uploads | Multer (memory) → stored in MongoDB, served authorised |
 | Mail | Nodemailer, console-logged unless SMTP is enabled |
 | Dates | Day.js |
 

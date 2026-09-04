@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import path from 'node:path';
 
 import env from './config/env.js';
 import routes from './routes/index.js';
@@ -45,7 +44,11 @@ export function createApp() {
   }
 
   // Uploaded KYC/income documents.
-  app.use('/uploads', express.static(path.resolve(env.uploadDir), { maxAge: '1h' }));
+  /*
+   * No static /uploads mount. Document bytes live in Mongo and are served by
+   * GET /api/documents/:id/file, which checks ownership first. The old mount
+   * handed any file to anyone who knew its name — wrong for income proofs.
+   */
 
   /** Liveness probe — also the endpoint UptimeRobot pings to keep Render awake. */
   app.get('/api/health', (_req, res) =>
