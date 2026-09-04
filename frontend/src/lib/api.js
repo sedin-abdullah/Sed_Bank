@@ -4,8 +4,68 @@
  * every error into a predictable shape the forms and toasts can rely on.
  */
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 
-export const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+/** True inside the Capacitor Android/iOS WebView, false in a browser. */
+export const IS_NATIVE = Capacitor.isNativePlatform();
+
+/**
+ * Where the API lives.
+ *
+ * The distinction matters more than it looks. In a browser the app and the API
+ * are both reachable from the same machine, so a `localhost` fallback is a
+ * convenience. Inside a Capacitor WebView the bundle is served from
+ * `http://localhost` ON THE DEVICE, so `localhost` means the phone itself —
+ * a build with no VITE_API_URL does not fall back to anything useful, it
+ * silently talks to nothing. Vite inlines these at build time, so there is no
+ * runtime signal either.
+ *
+ * Hence: on native an absolute, non-loopback URL is required, and a build
+ * without one is treated as a build error rather than a mystery at runtime.
+ */
+const LOOPBACK = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$/i;
+
+/**
+ * Resolved lazily into a value + error pair rather than thrown: throwing here
+ * runs during module init, React never mounts, and the result is a blank
+ * screen. The app renders `API_CONFIG_ERROR` as a readable message instead.
+ */
+function resolveApiBase() {
+  const configured = (import.meta.env.VITE_API_URL || '').trim().replace(/\/$/, '');
+
+  if (!IS_NATIVE) {
+    // Browser: same-machine loopback is a reasonable dev default.
+    return { base: configured || 'http://localhost:5000', error: null };
+  }
+
+  if (!configured) {
+    return {
+      base: '',
+      error:
+        'VITE_API_URL was not set when this app was built. A native build cannot ' +
+        'guess the API address — inside the WebView, localhost is the device ' +
+        'itself. Rebuild with VITE_API_URL pointing at the deployed API.',
+    };
+  }
+
+  if (LOOPBACK.test(configured)) {
+    return {
+      base: configured,
+      error:
+        `VITE_API_URL is ${configured}, which inside a native WebView resolves to ` +
+        'the device rather than your machine or the server. Rebuild with the ' +
+        "API's real address — use your machine's LAN IP for local development.",
+    };
+  }
+
+  return { base: configured, error: null };
+}
+
+const resolved = resolveApiBase();
+
+/** Non-null when the build is misconfigured for the platform it is running on. */
+export const API_CONFIG_ERROR = resolved.error;
+export const API_BASE = resolved.base;
 export const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL || API_BASE).replace(/\/$/, '');
 
 const TOKEN_KEY = 'sedbank.token';

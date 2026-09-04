@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { API_CONFIG_ERROR } from './lib/api.js';
 
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
@@ -30,8 +31,52 @@ const queryClient = new QueryClient({
   },
 });
 
+
+/**
+ * A misconfigured native build cannot reach any API, so every screen would be
+ * a spinner or a vague "cannot reach" toast. Say so plainly once, instead.
+ */
+function ConfigError({ message }) {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem',
+        background: '#180B10',
+        color: '#F8FAFC',
+        fontFamily: 'Inter, system-ui, sans-serif',
+      }}
+    >
+      <div style={{ maxWidth: '34rem' }}>
+        <p
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '0.7rem',
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: '#EC7BA4',
+            margin: 0,
+          }}
+        >
+          Build misconfigured
+        </p>
+        <h1 style={{ fontSize: '1.5rem', margin: '0.75rem 0 0', fontWeight: 600 }}>
+          This build cannot reach the SedBank API
+        </h1>
+        <p style={{ color: '#B8A9AC', lineHeight: 1.65, marginTop: '0.75rem' }}>{message}</p>
+      </div>
+    </div>
+  );
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    {API_CONFIG_ERROR ? (
+      <ConfigError message={API_CONFIG_ERROR} />
+    ) : (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
@@ -43,5 +88,6 @@ createRoot(document.getElementById('root')).render(
         </ToastProvider>
       </QueryClientProvider>
     </BrowserRouter>
+    )}
   </StrictMode>
 );

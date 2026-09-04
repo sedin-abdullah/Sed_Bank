@@ -12,6 +12,13 @@ const backendRoot = path.resolve(__dirname, '..', '..');
 
 dotenv.config({ path: path.join(backendRoot, '.env') });
 
+/** Origins a Capacitor WebView presents itself as, per platform. */
+export const CAPACITOR_ORIGINS = [
+  'http://localhost', // Android (Capacitor 6+ default)
+  'https://localhost', // Android with androidScheme: 'https'
+  'capacitor://localhost', // iOS
+];
+
 const bool = (value, fallback = false) => {
   if (value === undefined || value === '') return fallback;
   return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
@@ -43,11 +50,26 @@ export const env = {
     expiresIn: process.env.JWT_EXPIRES_IN || '12h',
   },
 
-  // Comma separated list of allowed browser origins.
-  corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean),
+  /**
+   * Comma separated list of allowed browser origins.
+   *
+   * The Capacitor origins are appended unconditionally. A Capacitor Android
+   * WebView serves the bundled app from `http://localhost` (and iOS from
+   * `capacitor://localhost`), so without them every request from the mobile
+   * build is rejected — which is exactly how this surfaces: the app loads,
+   * then nothing works.
+   *
+   * They cannot be narrowed further: the server has no way to distinguish a
+   * WebView from any other local process claiming that origin. Bearer-token
+   * auth, not origin, is what actually protects these endpoints.
+   */
+  corsOrigins: [
+    ...(process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean),
+    ...CAPACITOR_ORIGINS,
+  ],
 
   uploadDir: process.env.UPLOAD_DIR || path.join(backendRoot, 'uploads'),
   maxUploadMb: num(process.env.MAX_UPLOAD_MB, 5),

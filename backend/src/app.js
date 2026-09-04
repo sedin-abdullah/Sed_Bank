@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
+import ApiError from './utils/ApiError.js';
 import env from './config/env.js';
 import routes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/error.js';
@@ -30,7 +31,18 @@ export function createApp() {
         if (env.corsOrigins.includes(origin) || env.corsOrigins.includes('*')) {
           return callback(null, true);
         }
-        return callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+        /*
+         * A disallowed origin is a configuration problem, not a server
+         * fault. Throwing a bare Error here produced a 500, which made a
+         * missing CORS_ORIGINS entry look like the API had crashed and cost
+         * real debugging time. 403 with the offending origin named is
+         * something you can act on.
+         */
+        return callback(
+          ApiError.forbidden(
+            `Origin ${origin} is not allowed by CORS. Add it to CORS_ORIGINS.`
+          )
+        );
       },
       credentials: true,
     })
