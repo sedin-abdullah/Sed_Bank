@@ -107,7 +107,8 @@ FOIR is the new EMI plus existing EMIs as a share of income.
 always draws a random score and the branch varies run to run. Run locally with
 test hooks on if you need a specific outcome for a scripted demo.
 
-**Uploaded files do not survive a redeploy.** Documents are written to the API's
-local disk and Render's filesystem is ephemeral. The database rows persist, so
-the UI keeps listing files whose bytes are gone. A persistent disk or object
-storage is the fix for anything real.
+**Uploaded documents are stored in MongoDB**, not on the API's local disk,
+because that disk is ephemeral on Render — a redeploy used to wipe every file
+while leaving the rows behind. They are served from an authorised endpoint, so
+only the owner or a staff member can read one. Files uploaded before this
+change are gone and report that plainly; re-upload them.

@@ -193,6 +193,24 @@ export const verifyBankAccount = asyncHandler(async (req, res) => {
 });
 
 /** Chronological audit trail — rendered as the application timeline. */
+/** Streams one document's bytes to an authorised caller. */
+export const documentFile = asyncHandler(async (req, res) => {
+  const document = await applicationService.getDocumentFile({
+    documentId: req.params.documentId,
+    actor: req.user,
+  });
+
+  res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
+  res.setHeader('Content-Length', document.data.length);
+  // inline: the UI opens these in a tab rather than forcing a save.
+  res.setHeader(
+    'Content-Disposition',
+    `inline; filename="${encodeURIComponent(document.originalName)}"`
+  );
+  res.setHeader('Cache-Control', 'private, max-age=300');
+  return res.send(document.data);
+});
+
 export const timeline = asyncHandler(async (req, res) => {
   // loadApplication enforces the ownership rule before any trail is exposed.
   const application = await applicationService.loadApplication(req.params.id, req.user);
@@ -216,4 +234,5 @@ export default {
   signAgreement,
   verifyBankAccount,
   timeline,
+  documentFile,
 };

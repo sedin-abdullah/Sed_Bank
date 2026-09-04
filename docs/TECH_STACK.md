@@ -113,5 +113,7 @@ endpoint reference and [CREDENTIALS.md](CREDENTIALS.md) for the demo logins.
   screen has a real empty state rather than invented figures.
 - **Every integration is mocked** — KYC, credit bureau, penny drop, payment
   gateway, SMS, email. Nothing leaves the process.
-- **Uploads go to local disk**, which is ephemeral on Render. Fine for a demo;
-  object storage is the fix for anything real.
+- **Uploads are stored in MongoDB** and served from an authorised route, so
+  they survive a redeploy and are not world-readable. Files are capped at 5 MB,
+  well inside the 16 MB BSON limit; object storage would be the move at real
+  volume.

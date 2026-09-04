@@ -41,7 +41,7 @@ import {
   FormError,
 } from '../../components/ui/States.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { http, fileUrl } from '../../lib/api.js';
+import { http } from '../../lib/api.js';
 import { currency, date, dateTime, titleCase, fileSize } from '../../lib/format.js';
 import {
   APPLICATION_STATUS,
@@ -103,6 +103,18 @@ export default function ApplicationDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  /**
+   * Opens a document in a new tab. The bytes come from an authorised endpoint,
+   * so this fetches them with the session token rather than letting the
+   * browser navigate — a plain link would arrive unauthenticated.
+   */
+  const openDocument = async (doc) => {
+    try {
+      await http.openFile(`/documents/${doc._id}/file`);
+    } catch (err) {
+      toast.error('Cannot open this document', err.message);
+    }
+  };
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -501,15 +513,14 @@ export default function ApplicationDetailPage() {
                             </td>
                             <td className="text-right">
                               <div className="flex justify-end gap-1">
-                                <a
-                                  href={fileUrl(doc.fileUrl)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                <button
+                                  type="button"
+                                  onClick={() => openDocument(doc)}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white/10 hover:text-slate-800"
                                   aria-label={`Open ${titleCase(doc.type)}`}
                                 >
                                   <ExternalLink className="h-4 w-4" />
-                                </a>
+                                </button>
                                 {doc.verificationStatus !== 'verified' ? (
                                   <button
                                     type="button"

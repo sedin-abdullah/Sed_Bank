@@ -186,6 +186,9 @@ documents.patch(
   validate({ body: applicationSchemas.verifyDocument }),
   underwritingController.verifyDocument
 );
+// The file itself. Owner or any staff member; authorisation is in the service.
+documents.get('/:documentId/file', applicationController.documentFile);
+
 // A customer may remove their own unverified upload; ops may remove any.
 documents.delete('/:documentId', underwritingController.deleteDocument);
 

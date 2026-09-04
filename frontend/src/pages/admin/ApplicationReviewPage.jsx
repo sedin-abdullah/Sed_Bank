@@ -38,7 +38,7 @@ import { ProgressBar } from '../../components/ui/Stepper.jsx';
 import { EmptyState, LoadingState, ErrorState, FormError } from '../../components/ui/States.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { http, fileUrl } from '../../lib/api.js';
+import { http } from '../../lib/api.js';
 import { currency, date, dateTime, ratioPercent, titleCase, fileSize, maskAccount } from '../../lib/format.js';
 import { APPLICATION_STATUS, ROLES } from '../../lib/constants.js';
 import { fieldErrorsOf, cn } from '../../lib/utils.js';
@@ -74,6 +74,18 @@ export default function ApplicationReviewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  /**
+   * Opens a document in a new tab. The bytes come from an authorised endpoint,
+   * so this fetches them with the session token rather than letting the
+   * browser navigate — a plain link would arrive unauthenticated.
+   */
+  const openDocument = async (doc) => {
+    try {
+      await http.openFile(`/documents/${doc._id}/file`);
+    } catch (err) {
+      toast.error('Cannot open this document', err.message);
+    }
+  };
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -537,16 +549,15 @@ export default function ApplicationReviewPage() {
                         </td>
                         <td>
                           <div className="flex justify-end gap-1">
-                            <a
-                              href={fileUrl(doc.fileUrl)}
-                              target="_blank"
-                              rel="noreferrer"
+                            <button
+                              type="button"
+                              onClick={() => openDocument(doc)}
                               data-testid={TESTIDS.adminReview.documentView}
-                              className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                              className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium text-slate-600 transition hover:bg-white/10"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
                               View
-                            </a>
+                            </button>
 
                             {canOperate && doc.verificationStatus !== 'verified' ? (
                               <button

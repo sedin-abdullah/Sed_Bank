@@ -18,6 +18,7 @@ import {
   KYC_STATUS,
   VERIFICATION_STATUS,
   ROLES,
+  STAFF_ROLES,
   EVENTS,
 } from '../constants/index.js';
 import { round2 } from '../utils/emi.js';
@@ -322,18 +323,53 @@ export async function submitKyc({ id, payload, actor, ip = '' }) {
 }
 
 /** Attaches an uploaded file to an application. */
+/**
+ * The bytes of one document, for the authorised download route.
+ *
+ * A borrower may read only their own uploads; any staff member may read any.
+ * Documents uploaded before files were stored in Mongo have no `data` — their
+ * bytes were lost with the ephemeral disk — and report that plainly rather
+ * than 404ing as though the record did not exist.
+ */
+export async function getDocumentFile({ documentId, actor }) {
+  const document = await Document.findById(documentId).select('+data');
+  if (!document) throw ApiError.notFound('Document not found.');
+
+  const isOwner = String(document.owner) === String(actor._id);
+  if (!isOwner && !STAFF_ROLES.includes(actor.role)) {
+    throw ApiError.forbidden('You do not have access to this document.');
+  }
+
+  if (!document.data || document.data.length === 0) {
+    throw ApiError.gone(
+      'This file is no longer available. It was uploaded before documents were stored durably and the server\'s temporary disk has since been recycled. Please upload it again.'
+    );
+  }
+
+  return document;
+}
+
 export async function addDocument({ id, file, type, actor, ip = '' }) {
   const application = await loadApplication(id, actor);
 
   if (!file) throw ApiError.badRequest('No file was uploaded.');
 
+  // Mint the id first so the download URL can be built in one write.
+  const documentId = new mongoose.Types.ObjectId();
+  const extension = (file.originalname.match(/\.[a-z0-9]{1,9}$/i) || [''])[0].toLowerCase();
+
   const document = await Document.create({
+    _id: documentId,
     application: application._id,
     owner: application.applicant,
     type,
     originalName: file.originalname,
-    storedName: file.filename,
-    fileUrl: `/uploads/${file.filename}`,
+    storedName: `${documentId}${extension}`,
+    // Served by an authorised route, not from static disk: the bytes live in
+    // Mongo so they survive a redeploy, and only the owner or staff may read
+    // them. The old /uploads path was world-readable to anyone with the name.
+    fileUrl: `/api/documents/${documentId}/file`,
+    data: file.buffer,
     mimeType: file.mimetype,
     sizeBytes: file.size,
     verificationStatus: VERIFICATION_STATUS.PENDING,
@@ -723,4 +759,5 @@ export default {
   withdrawApplication,
   getApplicationDetail,
   summarise,
+  getDocumentFile,
 };

@@ -16,6 +16,13 @@ const documentSchema = new mongoose.Schema(
     storedName: { type: String, required: true },
     /** Relative URL served by the API (`/uploads/<file>`), never an absolute disk path. */
     fileUrl: { type: String, required: true },
+    /**
+     * The file itself. Kept in Mongo because the API's local disk is
+     * ephemeral on the hosting we use — a redeploy wiped every uploaded
+     * document while leaving these rows behind, so the UI listed files whose
+     * bytes were gone. `select: false` means no ordinary query ever loads it.
+     */
+    data: { type: Buffer, select: false },
     mimeType: { type: String, default: 'application/octet-stream' },
     sizeBytes: { type: Number, default: 0 },
     verificationStatus: {

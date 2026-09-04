@@ -87,6 +87,9 @@ to any caller (the e-sign step cannot complete without it, as no SMS vendor is
 wired up), and the seeded accounts use published passwords. Do not put real
 data behind either.
 
+Uploaded documents are stored in MongoDB rather than on the API's local disk,
+which is ephemeral on Render, and are served from an authorised endpoint.
+
 ## Licence
 
 Internal demonstration project.

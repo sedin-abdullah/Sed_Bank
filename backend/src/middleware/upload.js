@@ -1,17 +1,13 @@
 /**
- * Multer disk storage for KYC / income documents.
+ * Multer memory storage for KYC / income documents.
  *
- * Files land in UPLOAD_DIR (git-ignored) and are served read-only from /uploads.
- * Filenames are randomised so a user-supplied name can never traverse the path.
+ * The file is held in memory and then written into the Document row, because
+ * the API's local disk does not survive a redeploy on our hosting. Uploads are
+ * capped well below the 16 MB BSON document limit.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
 import multer from 'multer';
 import env from '../config/env.js';
 import ApiError from '../utils/ApiError.js';
-
-fs.mkdirSync(env.uploadDir, { recursive: true });
 
 const ALLOWED_MIME = new Set([
   'image/jpeg',
@@ -20,15 +16,7 @@ const ALLOWED_MIME = new Set([
   'application/pdf',
 ]);
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, env.uploadDir),
-  filename: (_req, file, cb) => {
-    // Only the extension is taken from the client; the stem is random.
-    const ext = path.extname(file.originalname).toLowerCase().slice(0, 10);
-    const safeExt = /^\.[a-z0-9]{1,9}$/.test(ext) ? ext : '';
-    cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${safeExt}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage,

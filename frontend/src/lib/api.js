@@ -138,6 +138,32 @@ export const http = {
     setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
     return true;
   },
+
+  /**
+   * Opens a document in a new tab.
+   *
+   * Documents are served from an authorised endpoint now, not from static
+   * disk, so a plain <a href> would arrive without the bearer token. Fetch
+   * the bytes, wrap them in a blob URL, and hand that to the browser.
+   */
+  openFile: async (url) => {
+    const response = await api.get(url, { responseType: 'blob' });
+    const type = response.headers?.['content-type'] || 'application/octet-stream';
+    const blobUrl = URL.createObjectURL(new Blob([response.data], { type }));
+
+    const opened = window.open(blobUrl, '_blank', 'noopener');
+    if (!opened) {
+      // Pop-up blocked — fall back to a download so the click is not lost.
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    return true;
+  },
 };
 
 /** Absolute URL for an uploaded document (the API returns a relative path). */
